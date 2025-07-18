@@ -110,24 +110,6 @@ export const VideoCall = ({ roomUrl }: VideoCallProps) => {
       {/* Controls */}
       <div className="p-4 bg-video-controls border-t border-border">
         <div className="flex items-center justify-center space-x-4">
-          <Button
-            variant={isMuted ? "destructive" : "secondary"}
-            size="sm"
-            onClick={toggleMute}
-            disabled={!isJoined}
-          >
-            {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-          </Button>
-          
-          <Button
-            variant={isVideoOff ? "destructive" : "secondary"}
-            size="sm"
-            onClick={toggleVideo}
-            disabled={!isJoined}
-          >
-            {isVideoOff ? <VideoOff className="w-4 h-4" /> : <Video className="w-4 h-4" />}
-          </Button>
-
           {!isJoined ? (
             <Button
               variant="default"

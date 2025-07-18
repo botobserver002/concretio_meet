@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { VideoCall } from '@/components/VideoCall';
 import { Notepad } from '@/components/Notepad';
-import { NotebookPen, Settings, Users } from 'lucide-react';
+import { NotebookPen, Settings } from 'lucide-react';
+import concretioLogo from '@/assets/concretio-logo.png';
 
 const Index = () => {
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
@@ -15,7 +16,10 @@ const Index = () => {
       <header className="bg-card border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <h1 className="text-xl font-bold text-foreground">VideoCode</h1>
+            <div className="flex items-center space-x-3">
+              <img src={concretioLogo} alt="Concret.io" className="h-8" />
+              <h1 className="text-xl font-bold text-foreground">Concretio Interview</h1>
+            </div>
             <div className="flex items-center space-x-2">
               <Input
                 placeholder="Enter Daily.co room URL..."
@@ -27,10 +31,6 @@ const Index = () => {
           </div>
           
           <div className="flex items-center space-x-2">
-            <Button variant="secondary" size="sm">
-              <Users className="w-4 h-4 mr-2" />
-              Participants
-            </Button>
             <Button variant="secondary" size="sm">
               <Settings className="w-4 h-4" />
             </Button>
