@@ -25,14 +25,14 @@ export const VideoCall = ({ roomUrl }: VideoCallProps) => {
           colors: {
             accent: '#22c55e',
             accentText: '#ffffff',
-            background: 'hsl(210 11% 3%)',
-            backgroundAccent: 'hsl(210 11% 10%)',
-            baseText: 'hsl(210 20% 95%)',
-            border: 'hsl(210 11% 15%)',
-            mainAreaBg: 'hsl(210 11% 5%)',
-            mainAreaBgAccent: 'hsl(210 11% 7%)',
-            mainAreaText: 'hsl(210 20% 95%)',
-            supportiveText: 'hsl(210 10% 65%)'
+            background: '#0a0a0f',
+            backgroundAccent: '#141419',
+            baseText: '#f1f5f9',
+            border: '#1e293b',
+            mainAreaBg: '#0f172a',
+            mainAreaBgAccent: '#1e293b',
+            mainAreaText: '#f1f5f9',
+            supportiveText: '#64748b'
           }
         }
       });
