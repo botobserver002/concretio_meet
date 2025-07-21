@@ -31,9 +31,6 @@ const Index = () => {
           </div>
           
           <div className="flex items-center space-x-2">
-            <Button variant="secondary" size="sm">
-              <Settings className="w-4 h-4" />
-            </Button>
             <Button
               variant={isNotepadOpen ? "default" : "secondary"}
               size="sm"

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from 'react';
 import DailyIframe from '@daily-co/daily-js';
 import { Button } from '@/components/ui/button';
@@ -106,7 +107,6 @@ export const VideoCall = ({ roomUrl }: VideoCallProps) => {
           </div>
         )}
       </div>
-
       {/* Controls */}
       <div className="p-4 bg-video-controls border-t border-border">
         <div className="flex items-center justify-center space-x-4">
@@ -132,9 +132,7 @@ export const VideoCall = ({ roomUrl }: VideoCallProps) => {
             </Button>
           )}
 
-          <Button variant="secondary" size="sm">
-            <Settings className="w-4 h-4" />
-          </Button>
+       
         </div>
       </div>
     </div>
