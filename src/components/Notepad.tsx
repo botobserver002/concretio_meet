@@ -9,7 +9,7 @@ interface NotepadProps {
 }
 
 export const Notepad = ({ isOpen, onClose }: NotepadProps) => {
-  const [content, setContent] = useState('// Welcome to your notepad!\n// You can write code or take notes here\n\nfunction helloWorld() {\n  console.log("Hello from your video call!");\n}\n\n// Meeting Notes:\n// - \n// - \n// - ');
+  const [content, setContent] = useState('// You can write code or take notes here');
   const [mode, setMode] = useState<'code' | 'notes'>('code');
 
   const saveContent = () => {
@@ -41,9 +41,9 @@ export const Notepad = ({ isOpen, onClose }: NotepadProps) => {
       <div className="p-4 border-b border-border bg-card">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <h3 className="font-semibold text-foreground">Notepad</h3>
-            <div className="flex items-center space-x-1">
-              <Button
+            <h3 className="font-semibold text-foreground">CODE HERE</h3>
+            {/* <div className="flex items-center space-x-1"> */}
+              {/* <Button
                 variant={mode === 'code' ? 'default' : 'secondary'}
                 size="sm"
                 onClick={() => setMode('code')}
@@ -58,8 +58,8 @@ export const Notepad = ({ isOpen, onClose }: NotepadProps) => {
               >
                 <FileText className="w-3 h-3 mr-1" />
                 Notes
-              </Button>
-            </div>
+              </Button> */}
+            {/* </div> */}
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
             ×
