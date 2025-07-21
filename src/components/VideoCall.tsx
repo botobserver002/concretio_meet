@@ -1,14 +1,21 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import DailyIframe from '@daily-co/daily-js';
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, Video, VideoOff, Phone, PhoneOff, Settings } from 'lucide-react';
 
 interface VideoCallProps {
   roomUrl?: string;
+  onJoinedChange?: (isJoined: boolean) => void;
 }
 
-export const VideoCall = ({ roomUrl }: VideoCallProps) => {
+export interface VideoCallRef {
+  joinCall: () => void;
+  leaveCall: () => void;
+}
+
+export const VideoCall = forwardRef<VideoCallRef, VideoCallProps>(({ roomUrl, onJoinedChange }, ref) => {
   const callFrameRef = useRef<HTMLDivElement>(null);
   const [callFrame, setCallFrame] = useState<any>(null);
   const [isJoined, setIsJoined] = useState(false);
@@ -40,10 +47,12 @@ export const VideoCall = ({ roomUrl }: VideoCallProps) => {
 
       frame.on('joined-meeting', () => {
         setIsJoined(true);
+        onJoinedChange?.(true);
       });
 
       frame.on('left-meeting', () => {
         setIsJoined(false);
+        onJoinedChange?.(false);
       });
 
       setCallFrame(frame);
@@ -53,6 +62,11 @@ export const VideoCall = ({ roomUrl }: VideoCallProps) => {
       };
     }
   }, []);
+
+  useImperativeHandle(ref, () => ({
+    joinCall,
+    leaveCall
+  }));
 
   const joinCall = () => {
     if (callFrame && roomUrl) {
@@ -110,31 +124,11 @@ export const VideoCall = ({ roomUrl }: VideoCallProps) => {
       {/* Controls */}
       <div className="p-4 bg-video-controls border-t border-border">
         <div className="flex items-center justify-center space-x-4">
-          {!isJoined ? (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={joinCall}
-              disabled={!roomUrl}
-              className="bg-gradient-primary hover:opacity-90"
-            >
-              <Phone className="w-4 h-4 mr-2" />
-              Join Call
-            </Button>
-          ) : (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={leaveCall}
-            >
-              <PhoneOff className="w-4 h-4 mr-2" />
-              Leave
-            </Button>
-          )}
-
-       
+          {/* Additional controls can be added here if needed */}
         </div>
       </div>
     </div>
   );
-};
+});
+
+VideoCall.displayName = 'VideoCall';
