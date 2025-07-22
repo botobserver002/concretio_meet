@@ -3,11 +3,14 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import DailyIframe from '@daily-co/daily-js';
 import { Button } from '@/components/ui/button';
-import { Mic, MicOff, Video, VideoOff, Phone, PhoneOff, Settings } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, Phone, Settings } from 'lucide-react';
 
 interface VideoCallProps {
   roomUrl?: string;
   onJoinedChange?: (isJoined: boolean) => void;
+  isJoined?: boolean;
+  onLeaveCall?: () => void;
+  onNetworkStatsChange?: (networkStatus: { status: 'Good' | 'Bad'; packetLoss: number } | null) => void;
 }
 
 export interface VideoCallRef {
@@ -15,17 +18,16 @@ export interface VideoCallRef {
   leaveCall: () => void;
 }
 
-export const VideoCall = forwardRef<VideoCallRef, VideoCallProps>(({ roomUrl, onJoinedChange }, ref) => {
+export const VideoCall = forwardRef<VideoCallRef, VideoCallProps>(({ roomUrl, onJoinedChange, isJoined, onLeaveCall, onNetworkStatsChange }, ref) => {
   const callFrameRef = useRef<HTMLDivElement>(null);
   const [callFrame, setCallFrame] = useState<any>(null);
-  const [isJoined, setIsJoined] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
 
   useEffect(() => {
     if (callFrameRef.current) {
       const frame = DailyIframe.createFrame(callFrameRef.current, {
-        showLeaveButton: false,
+        showLeaveButton: true,
         showFullscreenButton: false,
         showLocalVideo: true,
         showParticipantsBar: false,
@@ -46,13 +48,12 @@ export const VideoCall = forwardRef<VideoCallRef, VideoCallProps>(({ roomUrl, on
       });
 
       frame.on('joined-meeting', () => {
-        setIsJoined(true);
         onJoinedChange?.(true);
       });
 
       frame.on('left-meeting', () => {
-        setIsJoined(false);
         onJoinedChange?.(false);
+        onNetworkStatsChange?.(null); // Reset network stats when leaving
       });
 
       setCallFrame(frame);
@@ -62,6 +63,56 @@ export const VideoCall = forwardRef<VideoCallRef, VideoCallProps>(({ roomUrl, on
       };
     }
   }, []);
+
+  // Monitor network statistics
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (callFrame && isJoined) {
+      intervalId = setInterval(async () => {
+        try {
+          const stats = await callFrame.getNetworkStats();
+          if (stats && stats.stats) {
+            // Extract packet loss from the stats
+            let packetLoss = 0;
+            
+            // Check for video receive stats
+            if (stats.stats.video && stats.stats.video.recv) {
+              const videoRecv = stats.stats.video.recv;
+              if (videoRecv.packetsLost !== undefined && videoRecv.packetsReceived !== undefined) {
+                const totalPackets = videoRecv.packetsLost + videoRecv.packetsReceived;
+                if (totalPackets > 0) {
+                  packetLoss = Math.max(packetLoss, (videoRecv.packetsLost / totalPackets) * 100);
+                }
+              }
+            }
+            
+            // Check for audio receive stats
+            if (stats.stats.audio && stats.stats.audio.recv) {
+              const audioRecv = stats.stats.audio.recv;
+              if (audioRecv.packetsLost !== undefined && audioRecv.packetsReceived !== undefined) {
+                const totalPackets = audioRecv.packetsLost + audioRecv.packetsReceived;
+                if (totalPackets > 0) {
+                  packetLoss = Math.max(packetLoss, (audioRecv.packetsLost / totalPackets) * 100);
+                }
+              }
+            }
+            
+            const status = packetLoss < 3 ? 'Good' : 'Bad'; // Consider < 3% as good
+            onNetworkStatsChange?.({ status, packetLoss });
+          }
+        } catch (error) {
+          console.warn('Failed to get network stats:', error);
+        }
+      }, 2000); // Update every 2 seconds
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [callFrame, isJoined, onNetworkStatsChange]);
 
   useImperativeHandle(ref, () => ({
     joinCall,
