@@ -1,9 +1,13 @@
-import { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { VideoCall } from '@/components/VideoCall';
-import { Notepad } from '@/components/Notepad';
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { VideoCall } from "@/components/VideoCall";
+import { Notepad } from "@/components/Notepad";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,19 +17,21 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Phone, AlertTriangle } from 'lucide-react';
-import concretioLogo from '@/assets/concretio-logo.png';
-import { MdCode } from 'react-icons/md';
+} from "@/components/ui/alert-dialog";
+import { Phone, AlertTriangle } from "lucide-react";
+import concretioLogo from "@/assets/concretio-logo.png";
+import { MdCode } from "react-icons/md";
 
 const Index = () => {
   const [isNotepadOpen, setIsNotepadOpen] = useState(false);
-  const [roomUrl, setRoomUrl] = useState('');
+  const [roomUrl, setRoomUrl] = useState("");
   const [isJoined, setIsJoined] = useState(false);
   const [showLeaveWarning, setShowLeaveWarning] = useState(false);
   const [networkStatus, setNetworkStatus] = useState<{
-    status: 'Good' | 'Bad';
+    status: "Good" | "Bad";
     packetLoss: number;
+    uploadRate?: number; // in kbps
+    downloadRate?: number; // in kbps
   } | null>(null);
 
   const videoCallRef = useRef<{
@@ -43,10 +49,10 @@ const Index = () => {
 
   const handleForceRefresh = () => {
     // Remove event listeners to allow refresh
-    window.removeEventListener('beforeunload', () => {});
+    window.removeEventListener("beforeunload", () => {});
     // Clear any data if needed
-    localStorage.removeItem('notepad-content');
-    localStorage.removeItem('notepad-mode');
+    localStorage.removeItem("notepad-content");
+    localStorage.removeItem("notepad-mode");
     // Force refresh
     window.location.reload();
   };
@@ -55,18 +61,22 @@ const Index = () => {
   useEffect(() => {
     const hasImportantData = () => {
       // Check if there's any data that would be lost
-      const hasRoomData = isJoined || roomUrl.trim() !== '';
+      const hasRoomData = isJoined || roomUrl.trim() !== "";
       const hasNotepadData = isNotepadOpen;
       // Check if there's saved content in localStorage
-      const savedContent = localStorage.getItem('notepad-content');
-      const hasNotepadContent = savedContent && savedContent !== '// You can write code or take notes here' && savedContent.trim() !== '';
-      
+      const savedContent = localStorage.getItem("notepad-content");
+      const hasNotepadContent =
+        savedContent &&
+        savedContent !== "// You can write code or take notes here" &&
+        savedContent.trim() !== "";
+
       return hasRoomData || hasNotepadData || hasNotepadContent;
     };
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (hasImportantData()) {
-        const message = 'Are you sure you want to leave? All your data (call session, room URL, and code notes) will be lost.';
+        const message =
+          "Are you sure you want to leave? All your data (call session, room URL, and code notes) will be lost.";
         event.preventDefault();
         event.returnValue = message; // For older browsers
         return message;
@@ -75,7 +85,7 @@ const Index = () => {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       // Check for Ctrl+R (refresh) or F5 (refresh)
-      if ((event.ctrlKey && event.key === 'r') || event.key === 'F5') {
+      if ((event.ctrlKey && event.key === "r") || event.key === "F5") {
         if (hasImportantData()) {
           event.preventDefault();
           setShowLeaveWarning(true);
@@ -83,12 +93,12 @@ const Index = () => {
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [isJoined, roomUrl, isNotepadOpen]);
 
@@ -99,14 +109,16 @@ const Index = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <img src={concretioLogo} alt="Concret.io" className="h-8" />
-            <h1 className="text-xl font-bold text-foreground">Concretio Meet</h1>
+            <h1 className="text-xl font-bold text-foreground">
+              Concretio Meet
+            </h1>
           </div>
 
           {!isJoined && (
             <div className="flex items-center justify-center flex-1 px-8">
               <div className="flex items-center space-x-3">
                 <Input
-                  placeholder="Enter Daily.co room URL..."
+                  placeholder="Enter room name..."
                   value={roomUrl}
                   onChange={(e) => setRoomUrl(e.target.value)}
                   className="w-80 max-w-md border-primary focus:border-primary focus:ring-primary placeholder:text-white"
@@ -118,8 +130,8 @@ const Index = () => {
                   disabled={!roomUrl}
                   className="bg-gradient-primary hover:opacity-90"
                 >
-                  <Phone className="w-4 h-4 mr-2" />
-                  Join Call
+                <Phone className="w-4 h-4 mr-2"/>
+                Join Room
                 </Button>
               </div>
             </div>
@@ -130,16 +142,34 @@ const Index = () => {
               <div className="flex items-center space-x-2 px-3 py-1 bg-muted rounded-md">
                 <div
                   className={`w-2 h-2 rounded-full ${
-                    networkStatus.status === 'Good' ? 'bg-green-500' : 'bg-red-500'
+                    networkStatus.status === "Good"
+                      ? "bg-green-500"
+                      : "bg-red-500"
                   }`}
                 />
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground font-medium">
                   Network: {networkStatus.status}
                 </span>
+                {/* <span className="text-xs text-muted-foreground">
+                  | <strong>Packet Loss:</strong>{" "}
+                  {networkStatus.packetLoss ?? "-"}%
+                  {typeof networkStatus.uploadRate === "number" && (
+                    <>
+                      {" "}
+                      | <strong>Up:</strong> {networkStatus.uploadRate} kbps
+                    </>
+                  )}
+                  {typeof networkStatus.downloadRate === "number" && (
+                    <>
+                      {" "}
+                      | <strong>Down:</strong> {networkStatus.downloadRate} kbps
+                    </>
+                  )}
+                </span> */}
               </div>
             )}
             <Button
-              variant={isNotepadOpen ? 'default' : 'secondary'}
+              variant={isNotepadOpen ? "default" : "secondary"}
               size="sm"
               onClick={() => setIsNotepadOpen(!isNotepadOpen)}
             >
@@ -193,21 +223,22 @@ const Index = () => {
               Are you sure you want to leave?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Refreshing or leaving this page will result in the loss of all your data including:
+              Refreshing or leaving this page will result in the loss of all
+              your data including:
               <ul className="list-disc list-inside mt-2 space-y-1">
                 {isJoined && <li>Current video call session</li>}
                 {roomUrl && <li>Room URL information</li>}
-                {(isNotepadOpen || localStorage.getItem('notepad-content')) && <li>All code notes and content</li>}
+                {(isNotepadOpen || localStorage.getItem("notepad-content")) && (
+                  <li>All code notes and content</li>
+                )}
                 <li>Any unsaved work</li>
               </ul>
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>
-              Stay on Page
-            </AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogCancel>Stay on Page</AlertDialogCancel>
+            <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
               onClick={handleForceRefresh}
             >
