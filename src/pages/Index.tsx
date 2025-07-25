@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { VideoCall } from "@/components/VideoCall";
 import { Notepad } from "@/components/Notepad";
+import { useToast } from "@/hooks/use-toast";
+import { verifyRoomExists, createRoomUrl, isValidRoomName } from "@/utils/dailyApi";
 import {
   ResizablePanelGroup,
   ResizablePanel,
@@ -18,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Phone, AlertTriangle } from "lucide-react";
+import { Phone, AlertTriangle, Loader2 } from "lucide-react";
 import concretioLogo from "@/assets/concretio-logo.png";
 import { MdCode } from "react-icons/md";
 
@@ -33,18 +35,96 @@ const Index = () => {
     uploadRate?: number; // in kbps
     downloadRate?: number; // in kbps
   } | null>(null);
+  
+  // New state for API verification
+  const [isVerifyingRoom, setIsVerifyingRoom] = useState(false);
+  const [verifiedRoomUrl, setVerifiedRoomUrl] = useState<string>("");
+  
+  const { toast } = useToast();
 
   const videoCallRef = useRef<{
     joinCall: () => void;
     leaveCall: () => void;
   }>(null);
 
-  const handleJoinCall = () => {
-    videoCallRef.current?.joinCall();
+  const handleJoinCall = async () => {
+    // Step 1: Basic validation (0ms)
+    if (!roomUrl.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Room Name",
+        description: "Please enter a room name or URL.",
+      });
+      return;
+    }
+
+    // Step 2: Format validation (immediate)
+    if (!isValidRoomName(roomUrl)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Room Name",
+        description: "Room names can only contain letters, numbers, hyphens, and underscores.",
+      });
+      return;
+    }
+
+    // Step 3: API verification (200-500ms)
+    setIsVerifyingRoom(true);
+
+    try {
+      const verification = await verifyRoomExists(roomUrl);
+      
+      if (!verification.exists) {
+        // Room doesn't exist - show meaningful error message
+        setIsVerifyingRoom(false);
+        
+        toast({
+          variant: "destructive",
+          title: "Room Not Found ❌",
+          description: `The room "${roomUrl}" doesn't exist. Please check the room name and try again, or contact the meeting organizer for the correct room name.`,
+        });
+        return;
+      }
+
+      // Step 4: Room exists - prepare for join (immediate feedback)
+      const fullRoomUrl = verification.roomInfo?.url || createRoomUrl(roomUrl);
+      setVerifiedRoomUrl(fullRoomUrl);
+      
+      toast({
+        title: "Room Verified ✅",
+        description: `Room "${verification.roomInfo?.name}" found! Joining now...`,
+      });
+
+      // Step 5: Join the verified room after user clicked "Join Room"
+      setTimeout(() => {
+        videoCallRef.current?.joinCall();
+        setIsVerifyingRoom(false);
+      }, 500);
+
+    } catch (error) {
+      console.error("Room verification failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Verification Failed",
+        description: "Unable to verify room. Please check your connection and try again.",
+      });
+      setIsVerifyingRoom(false);
+    }
   };
+
+
 
   const handleLeaveCall = () => {
     videoCallRef.current?.leaveCall();
+  };
+
+  const handleJoinError = (error: string) => {
+    setIsVerifyingRoom(false);
+    toast({
+      variant: "destructive",
+      title: "Failed to Join Room",
+      description: error,
+    });
   };
 
   const handleForceRefresh = () => {
@@ -117,21 +197,49 @@ const Index = () => {
           {!isJoined && (
             <div className="flex items-center justify-center flex-1 px-8">
               <div className="flex items-center space-x-3">
-                <Input
-                  placeholder="Enter room name..."
-                  value={roomUrl}
-                  onChange={(e) => setRoomUrl(e.target.value)}
-                  className="w-80 max-w-md border-primary focus:border-primary focus:ring-primary placeholder:text-white"
-                />
+                <div className="relative">
+                  <Input
+                    placeholder="Enter room name here..."
+                    value={roomUrl}
+                    onChange={(e) => {
+                      setRoomUrl(e.target.value);
+                      // Clear verified room URL when user changes input
+                      if (verifiedRoomUrl) {
+                        setVerifiedRoomUrl("");
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && roomUrl.trim() && !isVerifyingRoom) {
+                        handleJoinCall();
+                      }
+                    }}
+                    className="w-80 max-w-md border-primary focus:border-primary focus:ring-primary placeholder:text-white pr-4"
+                    disabled={isVerifyingRoom}
+                  />
+                  {roomUrl && !isValidRoomName(roomUrl) && (
+                    <div className="absolute top-full left-0 mt-1 text-xs text-red-400">
+                      Invalid format. Use letters, numbers, hyphens, and underscores only.
+                    </div>
+                  )}
+                </div>
                 <Button
                   variant="default"
                   size="sm"
                   onClick={handleJoinCall}
-                  disabled={!roomUrl}
+                  disabled={!roomUrl || isVerifyingRoom || !isValidRoomName(roomUrl)}
                   className="bg-gradient-primary hover:opacity-90"
                 >
-                <Phone className="w-4 h-4 mr-2"/>
-                Join Room
+                  {isVerifyingRoom ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    <>
+                      <Phone className="w-4 h-4 mr-2"/>
+                      Join Room
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -188,10 +296,11 @@ const Index = () => {
             <div className="h-full w-full p-6">
               <VideoCall
                 ref={videoCallRef}
-                roomUrl={roomUrl}
+                roomUrl={verifiedRoomUrl || (roomUrl ? createRoomUrl(roomUrl) : "")}
                 onJoinedChange={setIsJoined}
                 isJoined={isJoined}
                 onLeaveCall={handleLeaveCall}
+                onJoinError={handleJoinError}
                 onNetworkStatsChange={setNetworkStatus}
               />
             </div>
@@ -247,6 +356,8 @@ const Index = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+
     </div>
   );
 };

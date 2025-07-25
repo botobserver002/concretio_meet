@@ -16,6 +16,7 @@ interface VideoCallProps {
   onJoinedChange?: (isJoined: boolean) => void;
   isJoined?: boolean;
   onLeaveCall?: () => void;
+  onJoinError?: (error: string) => void;
   onNetworkStatsChange?: (
     networkStatus: { status: "Good" | "Bad"; packetLoss: number } | null
   ) => void;
@@ -28,13 +29,14 @@ export interface VideoCallRef {
 
 export const VideoCall = forwardRef<VideoCallRef, VideoCallProps>(
   (
-    { roomUrl, onJoinedChange, isJoined, onLeaveCall, onNetworkStatsChange },
+    { roomUrl, onJoinedChange, isJoined, onLeaveCall, onJoinError, onNetworkStatsChange },
     ref
   ) => {
     const callFrameRef = useRef<HTMLDivElement>(null);
     const [callFrame, setCallFrame] = useState<any>(null);
     const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
+    const [isJoining, setIsJoining] = useState(false);
 
     useEffect(() => {
       if (callFrameRef.current) {
@@ -60,12 +62,28 @@ export const VideoCall = forwardRef<VideoCallRef, VideoCallProps>(
         });
 
         frame.on("joined-meeting", () => {
+          setIsJoining(false);
           onJoinedChange?.(true);
         });
 
         frame.on("left-meeting", () => {
+          setIsJoining(false);
           onJoinedChange?.(false);
           onNetworkStatsChange?.(null); // Reset network stats when leaving
+        });
+
+        // Handle join errors
+        frame.on("error", (error: any) => {
+          console.error("Daily.co error:", error);
+          setIsJoining(false);
+          onJoinError?.(error.errorMsg || error.message || "Failed to join the room");
+        });
+
+        // Handle specific join errors
+        frame.on("join-error" as any, (error: any) => {
+          console.error("Daily.co join error:", error);
+          setIsJoining(false);
+          onJoinError?.(error.errorMsg || error.message || "Failed to join the room");
         });
 
         setCallFrame(frame);
@@ -140,19 +158,23 @@ export const VideoCall = forwardRef<VideoCallRef, VideoCallProps>(
       };
     }, [callFrame, isJoined, onNetworkStatsChange]);
 
+    // Note: Removed auto-join - only join when user explicitly clicks "Join Room"
+
     useImperativeHandle(ref, () => ({
       joinCall,
       leaveCall,
     }));
 
     const joinCall = () => {
-      if (callFrame && roomUrl) {
+      if (callFrame && roomUrl && !isJoining) {
+        setIsJoining(true);
         callFrame.join({ url: roomUrl });
       }
     };
 
     const leaveCall = () => {
       if (callFrame) {
+        setIsJoining(false);
         callFrame.leave();
       }
     };
@@ -181,8 +203,8 @@ export const VideoCall = forwardRef<VideoCallRef, VideoCallProps>(
             style={{ minHeight: "400px" }}
           />
 
-          {/* Demo message when no room URL */}
-          {!roomUrl && (
+          {/* Welcome message until SDK starts joining */}
+          {!isJoining && !isJoined && (
             <div className="absolute inset-0 flex items-center justify-center bg-video-bg">
               <div className="text-center space-y-6 px-4">
                 <div
